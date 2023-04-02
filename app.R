@@ -73,9 +73,9 @@ ui <- fluidPage(
   titlePanel("Gain from Trade"),
   sidebarLayout(
     sidebarPanel(
-      numericInput("b", "Number of buyers/sellers", value = 20, min = 10, max = 30),
-      numericInput("bmean", "Mean buyer price:", 50, min = 1, max = 100),
-      numericInput("smean", "Mean seller price:", 50, min = 1, max = 100),
+      numericInput("b", "Number of possible buyer/seller pairs", value = 20, min = 10, max = 30),
+      numericInput("bmean", "Average buyer maximum price:", 50, min = 1, max = 100),
+      numericInput("smean", "Average seller minimum price:", 50, min = 1, max = 100),
       radioButtons(
         "show",
         "Show: ",

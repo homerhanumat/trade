@@ -5,10 +5,9 @@ account: homer
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 8742450
-bundleId: 7037955
+bundleId: 7039167
 url: https://homer.shinyapps.io/trade/
-when: 1680412322.79563
-lastSyncTime: 1680412322.79564
+when: 1680449847.85739
+lastSyncTime: 1680449847.8574
 asMultiple: FALSE
 asStatic: FALSE
-ignoredFiles: scratch.R
