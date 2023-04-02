@@ -1,0 +1,14 @@
+name: trade
+title: trade
+username:
+account: homer
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 8742450
+bundleId: 7037953
+url: https://homer.shinyapps.io/trade/
+when: 1680412241.58184
+lastSyncTime: 1680412241.58185
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: scratch.R
