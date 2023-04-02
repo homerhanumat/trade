@@ -33,6 +33,40 @@ bsrect <- function(x, e, y, type) {
   )
 }
 
+all_rects <- function(df, e, t) {
+  df <- df %>% 
+    filter(x > 0) %>% 
+    filter(floor(x) <= e[1] & type == t) %>% 
+    mutate(
+      ymin = pmin(e[2], y),
+      ymax = pmax(e[2], y)
+    )
+  if (t == "buyer") {
+    fill <- "red"
+  } else {
+    fill <- "blue"
+  }
+  alpha <- 0.1
+  geom_rect(
+    data = df,
+    aes(
+      xmin = x - 1,
+      xmax = x,
+      ymin = ymin, ymax = ymax
+    ),
+    fill = fill, alpha = alpha
+  )
+}
+
+surplus <- function(df, e) {
+  df <- df %>% 
+    filter(x > 0 & floor(x) <= e[1])
+  cs <- sum(df[df$type == "buyer", ]$y - e[2])
+  ps <- sum(e[2] - df[df$type == "seller", ]$y)
+  tg <- cs + ps
+  c(cs = cs, ps = ps, tg = tg)
+}
+
 ## ui -----
 
 ui <- fluidPage(
@@ -42,6 +76,15 @@ ui <- fluidPage(
       numericInput("b", "Number of buyers/sellers", value = 20, min = 10, max = 30),
       numericInput("bmean", "Mean buyer price:", 50, min = 1, max = 100),
       numericInput("smean", "Mean seller price:", 50, min = 1, max = 100),
+      radioButtons(
+        "show",
+        "Show: ",
+        choices = list(
+          "consumer surplus", "producer surplus"
+        ),
+        selected = "consumer surplus",
+        inline = TRUE
+      ),
       actionButton("go", "Create buyers and sellers!"),
       uiOutput("bnumber"),
       uiOutput("snumber")
@@ -49,7 +92,7 @@ ui <- fluidPage(
     mainPanel(
       plotOutput("sd"),
       br(),
-      textOutput("narrative"),
+      verbatimTextOutput("narrative"),
       br(),
       DT::dataTableOutput("data")
     )
@@ -96,6 +139,7 @@ server <- function(input, output, session) {
   output$sd <- renderPlot({
     req(!is.na(e()[1]))
     input$go
+    input$show
     bn <- input$bn
     sn <- input$sn
     isolate({
@@ -116,25 +160,34 @@ server <- function(input, output, session) {
           y = "price (p)"
         ) +
         scale_x_continuous(breaks = 0:input$b, labels = 0:input$b)
-      plot + bsrect(bn, e, buyers()[bn], type = "buyer") +
-        bsrect(sn, e, sellers()[sn], type = "seller")
+      if (input$show == "consumer surplus" & !is.null(input$bn)) {
+        plot <- plot + 
+          bsrect(bn, e, buyers()[bn], type = "buyer") +
+          all_rects(df(), e(), "buyer")
+      } else if (input$show == "producer surplus" & !(is.null(input$sn))) {
+        plot <- plot + 
+          bsrect(sn, e, sellers()[sn], type = "seller") +
+          all_rects(df(), e(), "seller")
+      }
+      plot
     })
   }, res = 96)
   
   output$bnumber <- renderUI({
-    req(!is.na(e()[1]))
+    req(!is.na(e()[1]) & input$show == "consumer surplus")
     input$go
-    sliderInput("bn", "Buyer #:", 1, input$b, 1, step = 1)
+    sliderInput("bn", "Experience of Buyer #:", 1, input$b, 1, step = 1)
   })
   
   output$snumber <- renderUI({
-    req(!is.na(e()[1]))
+    req(!is.na(e()[1]) & input$show == "producer surplus")
     input$go
-    sliderInput("sn", "Seller #:", 1, input$b, 1, step = 1)
+    sliderInput("sn", "Experience of Seller #:", 1, input$b, 1, step = 1)
   })
   
   output$narrative <- renderText({
     if (!is.na(e()[2])) {
+      gains <- round(surplus(df(), e()), 2)
       bn <- input$bn
       sn <- input$sn
       bgain <- round(buyers()[bn] - e()[2], 2)
@@ -142,15 +195,32 @@ server <- function(input, output, session) {
       bres <- ifelse(bgain > 0, "gains", "would lose")
       sres <- ifelse(sgain > 0, "gains", "would lose")
       msg <- glue::glue("
-               {floor(e()[1])} trades occur.
-               Equilibirum price is {round(e()[2], 2)}. 
-               \n\n
-               Buyer {bn} {bres} {abs(bgain)} from trading.
-               Seller {sn} {sres} {abs(sgain)} from trading.")
+               {floor(e()[1])} trades occur. Equilibirum price is {round(e()[2], 2)}. 
+               Total gain from trade is {gains['tg']}.")
+      if (input$show == "consumer surplus") {
+        msg <- paste(
+          msg,
+          glue::glue('
+                     
+                     Consumer surplus is {gains["cs"]}.'),
+          glue::glue('Buyer {bn} {bres} {abs(bgain)} from trading.'),
+          sep = " "
+        )
+      }
+      if (input$show == "producer surplus") {
+        msg <- paste(
+          msg,
+          glue::glue('
+                     
+                     Producer surplus is {gains["ps"]}.'),
+          glue::glue('Seller {sn} {sres} {abs(sgain)} from trading.'),
+          sep = " "
+        )
+      }
     } else {
       msg <- "Sorry, there is no equilibrium."
     }
-    
+    msg
   })
   
   output$data <- DT::renderDataTable({
